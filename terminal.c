@@ -2673,6 +2673,12 @@ static void do_osc(Terminal *term)
 	    if (!term->no_remote_wintitle)
 		set_title(term->frontend, term->osc_string);
 	    break;
+	  case 12: /* Cursor colour */
+	    set_cursor_color(term->osc_string);
+	    break;
+	  case 112: /* Restore Cursor colour */
+	    reset_cursor_color();
+	    break;
 	}
     }
 }
@@ -4314,6 +4320,7 @@ static void term_out(Terminal *term)
 			break;
 		    }
 		break;
+	      case SEEN_OSC_NUM:
 	      case SEEN_OSC:
 		term->osc_w = FALSE;
 		switch (c) {
@@ -4341,6 +4348,12 @@ static void term_out(Terminal *term)
 		  case '8':
 		  case '9':
 		    term->esc_args[0] = 10 * term->esc_args[0] + c - '0';
+		    term->termstate = SEEN_OSC_NUM;
+		    break;
+		  case '\007':
+		    term->osc_strlen = 0;
+		    do_osc(term);
+		    term->termstate = TOPLEVEL;
 		    break;
 		  case 'L':
 		    /*

@@ -19,6 +19,7 @@
 #include "terminal.h"
 #include "storage.h"
 #include "win_res.h"
+#include "xtermcolors.h"
 
 #ifndef NO_MULTIMON
 #include <multimon.h>
@@ -1216,6 +1217,26 @@ static void systopalette(void)
     }
 }
 
+void restore_default_color(int i)
+{
+	if (pal) {
+		colours[i] = PALETTERGB(defpal[i].rgbtRed,
+					defpal[i].rgbtGreen,
+					defpal[i].rgbtBlue);
+	} else {
+		colours[i] = RGB(	defpal[i].rgbtRed,
+					defpal[i].rgbtGreen,
+					defpal[i].rgbtBlue);
+	}
+}
+
+void restore_all_default_colors()
+{
+	int i;
+	for (i = 0; i < NALLCOLOURS; i++)
+		restore_default_color(i);
+}
+
 /*
  * Set up the colour palette.
  */
@@ -1250,15 +1271,7 @@ static void init_palette(void)
 	}
 	ReleaseDC(hwnd, hdc);
     }
-    if (pal)
-	for (i = 0; i < NALLCOLOURS; i++)
-	    colours[i] = PALETTERGB(defpal[i].rgbtRed,
-				    defpal[i].rgbtGreen,
-				    defpal[i].rgbtBlue);
-    else
-	for (i = 0; i < NALLCOLOURS; i++)
-	    colours[i] = RGB(defpal[i].rgbtRed,
-			     defpal[i].rgbtGreen, defpal[i].rgbtBlue);
+    restore_all_default_colors();
 }
 
 /*
@@ -4820,32 +4833,29 @@ void palette_set(void *frontend, int n, int r, int g, int b)
     }
 }
 
-void palette_reset(void *frontend)
+void reset_logical_palette()
 {
-    int i;
-
-    /* And this */
-    for (i = 0; i < NALLCOLOURS; i++) {
-	if (pal) {
+	int i;
+	for (i = 0; i < NALLCOLOURS; i++) {
 	    logpal->palPalEntry[i].peRed = defpal[i].rgbtRed;
 	    logpal->palPalEntry[i].peGreen = defpal[i].rgbtGreen;
 	    logpal->palPalEntry[i].peBlue = defpal[i].rgbtBlue;
 	    logpal->palPalEntry[i].peFlags = 0;
-	    colours[i] = PALETTERGB(defpal[i].rgbtRed,
-				    defpal[i].rgbtGreen,
-				    defpal[i].rgbtBlue);
-	} else
-	    colours[i] = RGB(defpal[i].rgbtRed,
-			     defpal[i].rgbtGreen, defpal[i].rgbtBlue);
-    }
+	}
+        restore_all_default_colors();
+}
 
+void palette_reset(void *frontend)
+{
     if (pal) {
 	HDC hdc;
+	reset_logical_palette();
 	SetPaletteEntries(pal, 0, NALLCOLOURS, logpal->palPalEntry);
 	hdc = get_ctx(frontend);
 	RealizePalette(hdc);
 	free_ctx(hdc);
     } else {
+        restore_all_default_colors();
 	/* Default Background may have changed. Ensure any space between
 	 * text area and window border is redrawn. */
 	InvalidateRect(hwnd, NULL, TRUE);
@@ -5783,4 +5793,127 @@ void agent_schedule_callback(void (*callback)(void *, void *, int),
     c->data = data;
     c->len = len;
     PostMessage(hwnd, WM_AGENT_CALLBACK, 0, (LPARAM)c);
+}
+
+void tolower_and_remove_spaces(char *str)
+{
+	char *scan = str;
+	while (*scan) {
+		if (*scan != ' ')
+			*(str++) = tolower(*scan);
+		++scan;
+	}
+	*str = 0;
+}
+
+unsigned int color_name(char *name)
+{
+	int first = 0;
+	int last = CNAMECNT - 1;
+	int mid, cmp;
+	int slen;
+	tolower_and_remove_spaces(name);
+	slen = strlen(name);
+	while (first<=last) {
+		mid = (first+last)/2;
+		cmp = strcmp(name, cnames[mid].name);
+		if (cmp>0) {
+			first=mid+1;
+			continue;
+		} else if (cmp==0 && slen == strlen(cnames[mid].name)) {
+			return cnames[mid].rgb;
+		}
+		last=mid-1;
+	}
+	return 0xffffff;
+}
+
+unsigned int color_number(char *str)
+{
+	int num = 0;
+	while (isdigit(*str)) {
+		num = num*10 + *str - '0';
+		++str;
+	}
+	if (num < 0 || num > 255)
+		num = 0xff;
+	return colours[num];
+}
+
+/* FIXME - same code should work on gtk version
+ * FIXME - functions should be static
+ * FIXME - probably should be in separate source file
+ * FIXME - probably should be in common code instead of down here in windows/
+ */
+
+char *handle_semicolon_field_separator(char *str)
+{
+	while(*str) {
+		if (*str == ';') {
+			*str = 0;
+			return ++str;
+		}
+		++str;
+	}
+	return str;
+}
+
+unsigned int hexdigit(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	c = tolower(c);
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return 0;
+}
+
+unsigned int hexpair(char *str)
+{
+	return hexdigit(*str) * 16 + hexdigit(*(str+1));
+}
+
+unsigned int color_rgb(char *str)
+{
+	if (strlen(str) != 6)
+		return 0xffffff;
+	return RGB(	hexpair(str),
+			hexpair(&str[2]),
+			hexpair(&str[4]));
+}
+
+/*
+ * Parse color in one of three formats:
+ *  #RRGGBB	: red-green-blue components in hexadecimal (preceded by '#')
+ *  ddd		: xterm 256-color index as 1 to 3 decimal digits (0-255)
+ *  <colorname>	: xterm recognized color name (eg, "Aqua Marine", or "goldenrod3")
+ *		   (whitespace and capitalization are not significant)
+ *		    see http://en.wikipedia.org/wiki/X11_color_names
+ */
+unsigned int parse_color(char *str)
+{
+	if (isdigit(*str))
+		return color_number(str);
+	if (*str == '#')
+		return color_rgb(str+1);
+	return color_name(str);
+}
+
+void set_cursor_color(char *str)
+{
+	char *copy = dupstr(str);
+	char *next = handle_semicolon_field_separator(copy);
+
+	colours[261] = parse_color(copy);		/* Set cursor's background color */
+	if (*next)
+		colours[260] = parse_color(next);	/* Set cursor's foreground color if given */
+
+	free(copy);
+}
+
+
+void reset_cursor_color()
+{
+	restore_default_color(260);	/* Foreground cursor color */
+	restore_default_color(261);	/* Background cursor color */
 }

@@ -1430,6 +1430,13 @@ void request_callback_notifications(toplevel_callback_notify_fn_t notify,
                                     void *frontend);
 
 /*
+ *  Change cursor color
+ */
+
+void set_cursor_color(char *str);
+void reset_cursor_color();
+
+/*
  * Define no-op macros for the jump list functions, on platforms that
  * don't support them. (This is a bit of a hack, and it'd be nicer to
  * localise even the calls to those functions into the Windows front

@@ -202,7 +202,8 @@ struct terminal_tag {
 	VT52_Y1,
 	VT52_Y2,
 	VT52_FG,
-	VT52_BG
+	VT52_BG,
+	SEEN_OSC_NUM
     } termstate;
 
     enum {
