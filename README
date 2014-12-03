@@ -7,8 +7,13 @@ With following features added:
    - mkfiles.pl will create a Makefile for cross compiling
    Windows exe from Linux (tested on Fedora)
 
-   - Will recognize control codes sent by Tmux et al to change
+   - Will recognize control codes sent by Tmux et al, to change
    the cursor color.
+
+   - New print-to-clipboard option in the settings->terminal tab. 
+   When configured this way, whatever data is sent between "print"
+   control codes, to be copied to the Windows clipboard instead
+   of a printer.
 
 **********
 

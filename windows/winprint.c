@@ -18,6 +18,61 @@ struct printer_job_tag {
     HANDLE hprinter;
 };
 
+/*
+ * Windows clipboard support
+ * Diomidis Spinellis, June 2003
+ */
+static char *clip_b, *clip_bp;		/* Buffer, pointer to buffer insertion point */
+static size_t clip_bsiz, clip_remsiz;	/* Buffer, size, remaining size */
+static size_t clip_total;		/* Total read */
+char *PRINT_TO_CLIPBOARD_STRING = "Windows Clipboard";
+
+#define CLIP_CHUNK 16384
+
+static void clipboard_init(void)
+{
+	if (clip_b)
+		sfree(clip_b);
+	clip_bp = clip_b = smalloc(clip_remsiz = clip_bsiz = CLIP_CHUNK);
+	clip_total = 0;
+}
+
+static void clipboard_data(void *buff,  int len)
+{
+	memcpy(clip_bp, buff, len);
+	clip_remsiz -= len;
+	clip_total += len;
+	clip_bp += len;
+	if (clip_remsiz < CLIP_CHUNK) {
+		clip_b = srealloc(clip_b, clip_bsiz *= 2);
+		clip_remsiz = clip_bsiz - clip_total;
+		clip_bp = clip_b + clip_total;
+	}
+}
+
+static void clipboard_copy(void)
+{
+	HANDLE hglb;
+
+	if (!OpenClipboard(NULL))
+		return; // error("Unable to open the clipboard");
+	if (!EmptyClipboard()) {
+		CloseClipboard();
+		return; // error("Unable to empty the clipboard");
+	}
+
+	hglb = GlobalAlloc(GMEM_DDESHARE, clip_total + 1);
+	if (hglb == NULL) {
+		CloseClipboard();
+		return; // error("Unable to allocate clipboard memory");
+	}
+	memcpy(hglb, clip_b, clip_total);
+	((char *)hglb)[clip_total] = '\0';
+	SetClipboardData(CF_TEXT, hglb);
+	CloseClipboard();
+}
+
+/***/
 static int printer_add_enum(int param, DWORD level, char **buffer,
                             int offset, int *nprinters_ptr)
 {
@@ -30,7 +85,7 @@ static int printer_add_enum(int param, DWORD level, char **buffer,
      * we'll need for the output. Discard the return value since it
      * will almost certainly be a failure due to lack of space.
      */
-    EnumPrinters(param, NULL, level, (*buffer)+offset, 512,
+    EnumPrinters(param, NULL, level, (LPBYTE) ((*buffer)+offset), 512,
 		 &needed, &nprinters);
 
     if (needed < 512)
@@ -38,7 +93,7 @@ static int printer_add_enum(int param, DWORD level, char **buffer,
 
     *buffer = sresize(*buffer, offset+needed, char);
 
-    if (EnumPrinters(param, NULL, level, (*buffer)+offset,
+    if (EnumPrinters(param, NULL, level, (LPBYTE) ((*buffer)+offset),
                      needed, &needed, &nprinters) == 0)
         return FALSE;
 
@@ -127,6 +182,10 @@ void printer_finish_enum(printer_enum *pe)
 
 printer_job *printer_start_job(char *printer)
 {
+    if (!strcmp(printer, PRINT_TO_CLIPBOARD_STRING)) {
+	clipboard_init();
+	return (printer_job *) PRINT_TO_CLIPBOARD_STRING;
+    }
     printer_job *ret = snew(printer_job);
     DOC_INFO_1 docinfo;
     int jobstarted = 0, pagestarted = 0;
@@ -139,7 +198,7 @@ printer_job *printer_start_job(char *printer)
     docinfo.pOutputFile = NULL;
     docinfo.pDatatype = "RAW";
 
-    if (!StartDocPrinter(ret->hprinter, 1, (LPSTR)&docinfo))
+    if (!StartDocPrinter(ret->hprinter, 1, (LPBYTE)&docinfo))
 	goto error;
     jobstarted = 1;
 
@@ -167,6 +226,11 @@ void printer_job_data(printer_job *pj, void *data, int len)
     if (!pj)
 	return;
 
+    if (pj == (printer_job *)PRINT_TO_CLIPBOARD_STRING) {
+	clipboard_data(data, len);
+	return;
+    }
+
     WritePrinter(pj->hprinter, data, len, &written);
 }
 
@@ -174,6 +238,11 @@ void printer_finish_job(printer_job *pj)
 {
     if (!pj)
 	return;
+
+    if (pj == (printer_job *)PRINT_TO_CLIPBOARD_STRING) {
+	clipboard_copy();
+	return;
+    }
 
     EndPagePrinter(pj->hprinter);
     EndDocPrinter(pj->hprinter);

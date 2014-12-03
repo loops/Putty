@@ -11,6 +11,7 @@
 #include "storage.h"
 
 #define PRINTER_DISABLED_STRING "None (printing disabled)"
+extern char* PRINT_TO_CLIPBOARD_STRING;
 
 #define HOST_BOX_TITLE "Host Name (or IP address)"
 #define PORT_BOX_TITLE "Port"
@@ -481,6 +482,7 @@ static void printerbox_handler(union control *ctrl, void *dlg,
 	if (ctrl->editbox.has_list) {
 	    dlg_listbox_clear(ctrl, dlg);
 	    dlg_listbox_add(ctrl, dlg, PRINTER_DISABLED_STRING);
+	    dlg_listbox_add(ctrl, dlg, PRINT_TO_CLIPBOARD_STRING);
 	    pe = printer_start_enum(&nprinters);
 	    for (i = 0; i < nprinters; i++)
 		dlg_listbox_add(ctrl, dlg, printer_get_name(pe, i));
