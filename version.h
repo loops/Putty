@@ -8,6 +8,6 @@
  * default stuff used for local development runs of 'make'.
  */
 
-#define TEXTVER "Unidentified build"
-#define SSHVER "PuTTY-Unidentified-Local-Build"
-#define BINARY_VERSION 0,0,0,0
+#define TEXTVER "Loops Cursor Color build"
+#define SSHVER "PuTTY-Loops-Build"
+#define BINARY_VERSION 2014,12,1,0
