@@ -1,3 +1,17 @@
+**********
+Fork of official Putty svn repository as of December 1, 2014.
+**********
+
+With following features added:
+
+   - mkfiles.pl will create a Makefile for cross compiling
+   Windows exe from Linux (tested on Fedora)
+
+   - Will recognize control codes sent by Tmux et al to change
+   the cursor color.
+
+**********
+
 This is the README for the source archive of PuTTY, a free Win32
 and Unix Telnet and SSH client.
 
@@ -109,6 +123,18 @@ For building on Unix:
  - It's also possible to build the Windows version of PuTTY to run
    on Unix by using Winelib.  To do this, change to the `windows'
    directory and run `make -f Makefile.cyg CC=winegcc RC=wrc'.
+
+For cross-compiling on Linux for Windows:
+
+  - Make sure the 'i686-w64-mingw32' cross compiler executable is
+    installed.  On Fedora that is done with: "yum install mingw32-gcc".
+
+  - Generate the make file with "./mkfiles.pl", and then cd into
+    windows directory.
+
+  - Build with make -f Makefile.mx
+
+  - If all went well, copy "putty.exe" to your Windows machine.
 
 All of the Makefiles are generated automatically from the file
 `Recipe' by the Perl script `mkfiles.pl' (except for the Unix one,

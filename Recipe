@@ -17,6 +17,7 @@
 !makefile cygwin windows/Makefile.cyg
 !makefile borland windows/Makefile.bor
 !makefile lcc windows/Makefile.lcc
+!makefile ming windows/Makefile.mx
 !makefile gtk unix/Makefile.gtk
 !makefile unix unix/Makefile.ux
 !makefile am Makefile.am
