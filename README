@@ -4,16 +4,33 @@ Fork of official Putty svn repository as of December 1, 2014.
 
 With following features added:
 
-   - mkfiles.pl will create a Makefile for cross compiling
-   Windows exe from Linux (tested on Fedora)
+   - mkfiles.pl will create a Makefile.mx for cross compiling
+   a Windows exe from Linux (tested on Fedora).
 
    - Will recognize control codes sent by Tmux et al, to change
-   the cursor color.
+   the cursor color. Select color is "\E]12;<COLOR>\007" and
+   to reset the cursor to its original color "\E]112\007". Most
+   standard X11 color names are recognized (Red,Cyan,etc).
+
+   - Updates the Windows clipboard based on xterm codes sent
+   by Tmux.  Clipboard start is "\E]52;;", and stop is "\007".
+   The double semicolon matches the Tmux default. The data must
+   be UTF-8 characters that have been Base64 encoded.
 
    - New print-to-clipboard option in the settings->terminal tab. 
    When configured this way, whatever data is sent between "print"
    control codes, to be copied to the Windows clipboard instead
-   of a printer.
+   of a printer.  Print start is "\E[5i", and stop is "\E[4i".
+
+Tmux has default terminal overrides to enable cursor color and
+clipboard copy as long as the terminal name starts with "xterm".
+So, set your "Terminal-type string" in Putty's config to "xterm"
+or "xterm-256color".  If you do, Tmux currently sets these
+default terminal-overrides:
+
+	:XT:Ms=\\E]52;%p1%s;%p2%s\\007:
+	:Cs=\\E]12;%p1%s\\007:Cr=\\E]112\\007:
+	:Ss=\\E[%p1%d q:Se=\\E[2 q:
 
 **********
 

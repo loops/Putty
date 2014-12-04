@@ -2652,6 +2652,7 @@ static void toggle_mode(Terminal *term, int mode, int query, int state)
 /*
  * Process an OSC sequence: set window title or icon name.
  */
+void clipboard_decode_and_copy(char *, int);
 static void do_osc(Terminal *term)
 {
     if (term->osc_w) {
@@ -2675,6 +2676,9 @@ static void do_osc(Terminal *term)
 	    break;
 	  case 12: /* Cursor colour */
 	    set_cursor_color(term->osc_string);
+	    break;
+	  case 52: /* Copy to clipboard */
+	    clipboard_decode_and_copy(term->osc_string, term->osc_strlen);
 	    break;
 	  case 112: /* Restore Cursor colour */
 	    reset_cursor_color();
@@ -2801,7 +2805,7 @@ static void term_out(Terminal *term)
 		    term->print_state = 4;
 		else
 		    term->print_state = 0;
-		if (term->print_state == 4) {
+		if (c == '\007' || term->print_state == 4) {
 		    term_print_finish(term);
 		}
 		continue;
@@ -3310,6 +3314,7 @@ static void term_out(Terminal *term)
 		    /* Compatibility is nasty here, xterm, linux, decterm yuk! */
 		    compatibility(OTHER);
 		    term->termstate = SEEN_OSC;
+		    term->esc_nargs = 0;
 		    term->esc_args[0] = 0;
 		    break;
 		  case '7':		/* DECSC: save cursor */
@@ -4347,7 +4352,8 @@ static void term_out(Terminal *term)
 		  case '7':
 		  case '8':
 		  case '9':
-		    term->esc_args[0] = 10 * term->esc_args[0] + c - '0';
+		    term->esc_args[term->esc_nargs] *= 10;
+		    term->esc_args[term->esc_nargs] += c - '0';
 		    term->termstate = SEEN_OSC_NUM;
 		    break;
 		  case '\007':
@@ -4362,6 +4368,14 @@ static void term_out(Terminal *term)
 		     */
 		    if (term->esc_args[0] == 2) {
 			term->esc_args[0] = 1;
+			break;
+		    }
+		    /* else fall through */
+		  case ';':
+		    /* Grotty hack to let clipboard copy have useless first parameter */
+		    /*  to handle Tmux default setting of Ms=\\E]52;%p1%s;%p2%s\\007  */
+		    if (term->esc_args[0] == 52 && term->esc_nargs == 0) {
+			term->esc_args[++term->esc_nargs] = 0;
 			break;
 		    }
 		    /* else fall through */

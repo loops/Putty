@@ -131,6 +131,27 @@ int Base64decode(char *bufplain, const char *bufcoded)
     return nbytesdecoded;
 }
 
+void clipboard_decode_and_copy(char *data, int len)
+{
+	char *decoded;
+	HANDLE hglb;
+	int bufsize;
+
+	if (!OpenClipboard(NULL) || !EmptyClipboard())
+		return;
+
+	decoded = smalloc(((len + 3) / 4) * 3 + 1);
+	Base64decode(decoded, data);
+	bufsize = MultiByteToWideChar(CP_UTF8, 0, decoded, -1, NULL, 0) * 2;
+	hglb = GlobalAlloc(GMEM_DDESHARE, bufsize);
+	if (hglb != NULL) {
+		MultiByteToWideChar(CP_UTF8, 0, decoded, -1, (LPWSTR)hglb, bufsize);
+		SetClipboardData(CF_UNICODETEXT, hglb);
+	}
+
+	CloseClipboard();
+	sfree(decoded);
+}
 
 static void clipboard_copy(void)
 {
