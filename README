@@ -17,6 +17,9 @@ With following features added:
    The double semicolon matches the Tmux default. The data must
    be UTF-8 characters that have been Base64 encoded.
 
+   - Support Italic font rendering. Begin italic mode "\E[3m",
+   and end italics is "\E[23m".
+
    - New print-to-clipboard option in the settings->terminal tab. 
    When configured this way, whatever data is sent between "print"
    control codes, to be copied to the Windows clipboard instead
