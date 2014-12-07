@@ -330,7 +330,6 @@ struct terminal_tag {
 #define M_CTRL 4
 
 #define in_utf(term) ((term)->utf || (term)->ucsdata->line_codepage==CP_UTF8)
-#define uchar_t unsigned char
-unsigned int  xterm_key(uchar_t *buf, char *format, int p1, int p2);
+unsigned int  termkey(char *buf, char *format, int p1, int p2);
 
 #endif

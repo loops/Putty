@@ -11,14 +11,14 @@
 #include "putty.h"
 #include "terminal.h"
 
-unsigned int  termkey(uchar_t *buf, char *format, int p1, int p2)
+unsigned int  termkey(char *buf, char *format, int p1, int p2)
 {
-    char *out = (char *)buf;
+    char *out = buf;
     if(conf_get_int(term->conf, CONF_funky_type) == FUNKY_TERMKEY)
             out += sprintf(out, "\x9B");
     else    out += sprintf(out, "\x1b[");
     out += sprintf(out, format, p1, p2);
-    return out - (char *)buf;
+    return out - buf;
 }
 
 #define poslt(p1,p2) ( (p1).y < (p2).y || ( (p1).y == (p2).y && (p1).x < (p2).x ) )

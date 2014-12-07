@@ -80,7 +80,7 @@
 static Mouse_Button translate_button(Mouse_Button button);
 static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
-			unsigned char *output);
+			char *output);
 static void conftopalette(void);
 static void systopalette(void);
 static void init_palette(void);
@@ -1055,7 +1055,7 @@ void update_specials_menu(void *frontend)
 
 static void update_mouse_pointer(void)
 {
-    LPTSTR curstype;
+    LPTSTR curstype = IDC_ARROW;
     int force_visible = FALSE;
     static int forced_visible = FALSE;
     switch (busy_status) {
@@ -3082,7 +3082,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	 * we get the translations under _our_ control.
 	 */
 	{
-	    unsigned char buf[20];
+	    char buf[20];
 	    int len;
 
 	    if (wParam == VK_PROCESSKEY) { /* IME PROCESS key */
@@ -3178,7 +3178,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 
       case WM_IME_CHAR:
 	if (wParam & 0xFF00) {
-	    unsigned char buf[2];
+	    char buf[2];
 
 	    buf[1] = wParam;
 	    buf[0] = wParam >> 8;
@@ -3924,12 +3924,12 @@ static void init_winfuncs(void)
  * to indicate a NUL-terminated "special" string.
  */
 static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
-			unsigned char *output)
+			char *output)
 {
     BYTE keystate[256];
     int scan, left_alt = 0, key_down, shift_state;
     int r, i, code;
-    unsigned char *p = output;
+    char *p = output;
     static int alt_sum = 0;
     int funky_type = conf_get_int(conf, CONF_funky_type);
     int no_applic_k = conf_get_int(conf, CONF_no_applic_k);
