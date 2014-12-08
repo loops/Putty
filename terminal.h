@@ -323,8 +323,14 @@ struct terminal_tag {
     int scroll_on_disp;
     int scroll_on_key;
     int xterm_256_colour;
+    int modifiers;
 };
+#define M_SHIFT 1
+#define M_ALT 2
+#define M_CTRL 4
 
 #define in_utf(term) ((term)->utf || (term)->ucsdata->line_codepage==CP_UTF8)
+#define uchar_t unsigned char
+unsigned int  xterm_key(uchar_t *buf, char *format, int p1, int p2);
 
 #endif

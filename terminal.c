@@ -11,6 +11,16 @@
 #include "putty.h"
 #include "terminal.h"
 
+unsigned int  termkey(uchar_t *buf, char *format, int p1, int p2)
+{
+    char *out = (char *)buf;
+    if(conf_get_int(term->conf, CONF_funky_type) == FUNKY_TERMKEY)
+            out += sprintf(out, "\x9B");
+    else    out += sprintf(out, "\x1b[");
+    out += sprintf(out, format, p1, p2);
+    return out - (char *)buf;
+}
+
 #define poslt(p1,p2) ( (p1).y < (p2).y || ( (p1).y == (p2).y && (p1).x < (p2).x ) )
 #define posle(p1,p2) ( (p1).y < (p2).y || ( (p1).y == (p2).y && (p1).x <= (p2).x ) )
 #define poseq(p1,p2) ( (p1).y == (p2).y && (p1).x == (p2).x )
@@ -6230,10 +6240,17 @@ int format_arrow_key(char *buf, Terminal *term, int xkey, int ctrl)
 	if (ctrl)
 	    app_flg = !app_flg;
 
+	if (conf_get_int(term->conf, CONF_funky_type) == FUNKY_TERMKEY) {
+	    if (term->modifiers)
+		 p += termkey(p, "1;%d%c", term->modifiers + 1, xkey);
+	    else p += termkey(p, "%c", xkey, 0);
+	    return p - buf;
+	}
+
 	if (app_flg)
-	    p += sprintf((char *) p, "\x1BO%c", xkey);
+	    p += sprintf(p, "\x1BO%c", xkey);
 	else
-	    p += sprintf((char *) p, "\x1B[%c", xkey);
+	    p += sprintf(p, "\x1B[%c", xkey);
     }
 
     return p - buf;

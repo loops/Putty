@@ -4066,6 +4066,12 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
     scan = (HIWORD(lParam) & (KF_UP | KF_EXTENDED | 0xFF));
     shift_state = ((keystate[VK_SHIFT] & 0x80) != 0)
 	+ ((keystate[VK_CONTROL] & 0x80) != 0) * 2;
+    term->modifiers = 0;
+    if (conf_get_int(term->conf, CONF_funky_type) == FUNKY_TERMKEY) {
+        term->modifiers += (keystate[VK_SHIFT] & 0x80) ? 1 : 0;
+        term->modifiers += left_alt? 2 : 0;
+        term->modifiers += (keystate[VK_CONTROL] & 0x80) ? 4 : 0;
+    }
 
     /* Note if AltGr was pressed and if it was used as a compose key */
     if (!compose_state) {
@@ -4144,7 +4150,7 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
     /* If a key is pressed and AltGr is not active */
     if (key_down && (keystate[VK_RMENU] & 0x80) == 0 && !compose_state) {
 	/* Okay, prepare for most alts then ... */
-	if (left_alt)
+	if (left_alt && funky_type != FUNKY_TERMKEY)
 	    *p++ = '\033';
 
 	/* Lets see if it's a pattern we know all about ... */
@@ -4324,6 +4330,14 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	    }
 	}
 
+	if (wParam == VK_BACK && funky_type != FUNKY_TERMKEY) {
+	    if (term->modifiers) {
+		p += termkey(p, "127;%du", term->modifiers+1, 0);
+		return p - output;
+	    }
+	    *p++ = 0x7F; *p = 0;
+	    return -2;
+	}
 	if (wParam == VK_BACK && shift_state == 0) {	/* Backspace */
 	    *p++ = (conf_get_int(conf, CONF_bksp_is_delete) ? 0x7F : 0x08);
 	    *p++ = 0;
@@ -4335,10 +4349,20 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	    *p++ = 0;
 	    return -2;
 	}
-	if (wParam == VK_TAB && shift_state == 1) {	/* Shift tab */
-	    *p++ = 0x1B;
-	    *p++ = '[';
-	    *p++ = 'Z';
+	if (wParam == VK_TAB) {
+	    if (term->modifiers & M_SHIFT) {
+		if (term->modifiers & ~ M_SHIFT)
+		    p += termkey(p, "9;%dZ", term->modifiers, 0);
+		else
+		    p += termkey(p, "Z", 0, 0);
+		return p - output;
+	    } else if (term->modifiers) {
+		p += termkey(p, "9;%du", term->modifiers+1, 0);
+		return p - output;
+	    }
+	}
+	if (wParam == VK_SPACE && term->modifiers) {
+	    p += termkey(p, "32;%du", term->modifiers+1, 0);
 	    return p - output;
 	}
 	if (wParam == VK_SPACE && shift_state == 2) {	/* Ctrl-Space */
@@ -4376,9 +4400,17 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	    *p++ = 0x1E;	       /* Ctrl-~ == Ctrl-^ in xterm at least */
 	    return p - output;
 	}
+	if (wParam == VK_RETURN && term->modifiers) {
+	    p += termkey(p, "13;%du", term->modifiers+1, 0);
+	    return p - output;
+	}
 	if (shift_state == 0 && wParam == VK_RETURN && term->cr_lf_return) {
 	    *p++ = '\r';
 	    *p++ = '\n';
+	    return p - output;
+	}
+	if (wParam == VK_ESCAPE && term->modifiers) {
+	    p += termkey(p, "27;%du", term->modifiers+1, 0);
 	    return p - output;
 	}
 
@@ -4393,68 +4425,43 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	 */
 	code = 0;
 	switch (wParam) {
-	  case VK_F1:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 23 : 11);
-	    break;
-	  case VK_F2:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 24 : 12);
-	    break;
-	  case VK_F3:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 25 : 13);
-	    break;
-	  case VK_F4:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 26 : 14);
-	    break;
-	  case VK_F5:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 28 : 15);
-	    break;
-	  case VK_F6:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 29 : 17);
-	    break;
-	  case VK_F7:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 31 : 18);
-	    break;
-	  case VK_F8:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 32 : 19);
-	    break;
-	  case VK_F9:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 33 : 20);
-	    break;
-	  case VK_F10:
-	    code = (keystate[VK_SHIFT] & 0x80 ? 34 : 21);
-	    break;
-	  case VK_F11:
-	    code = 23;
-	    break;
-	  case VK_F12:
-	    code = 24;
-	    break;
-	  case VK_F13:
-	    code = 25;
-	    break;
-	  case VK_F14:
-	    code = 26;
-	    break;
-	  case VK_F15:
-	    code = 28;
-	    break;
-	  case VK_F16:
-	    code = 29;
-	    break;
-	  case VK_F17:
-	    code = 31;
-	    break;
-	  case VK_F18:
-	    code = 32;
-	    break;
-	  case VK_F19:
-	    code = 33;
-	    break;
-	  case VK_F20:
-	    code = 34;
-	    break;
+	  case VK_F1: code = 11; break;
+	  case VK_F2: code = 12; break;
+	  case VK_F3: code = 13; break;
+	  case VK_F4: code = 14; break;
+	  case VK_F5: code = 15; break;
+	  case VK_F6: code = 17; break;
+	  case VK_F7: code = 18; break;
+	  case VK_F8: code = 19; break;
+	  case VK_F9: code = 20; break;
+	  case VK_F10: code = 21; break;
+	  case VK_F11: code = 23; break;
+	  case VK_F12: code = 24; break;
+	  case VK_F13: code = 25; break;
+	  case VK_F14: code = 26; break;
+	  case VK_F15: code = 28; break;
+	  case VK_F16: code = 29; break;
+	  case VK_F17: code = 31; break;
+	  case VK_F18: code = 32; break;
+	  case VK_F19: code = 33; break;
+	  case VK_F20: code = 34; break;
 	}
-	if ((shift_state&2) == 0) switch (wParam) {
+	if (keystate[VK_SHIFT] & 0x80 && funky_type != FUNKY_TERMKEY) {
+	  switch (wParam) {
+	    case VK_F1: code = 23; break;
+	    case VK_F2: code = 24; break;
+	    case VK_F3: code = 25; break;
+	    case VK_F4: code = 26; break;
+	    case VK_F5: code = 28; break;
+	    case VK_F6: code = 29; break;
+	    case VK_F7: code = 31; break;
+	    case VK_F8: code = 32; break;
+	    case VK_F9: code = 33; break;
+	    case VK_F10: code = 34; break;
+	  }
+	}
+	if ((shift_state&2) == 0 || funky_type == FUNKY_TERMKEY)
+	switch (wParam) {
 	  case VK_HOME:
 	    code = 1;
 	    break;
@@ -4540,13 +4547,19 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 		p += sprintf((char *) p, "\x1BO%c", code + 'P' - 11);
 	    return p - output;
 	}
-	if ((code == 1 || code == 4) &&
-	    conf_get_int(conf, CONF_rxvt_homeend)) {
-	    p += sprintf((char *) p, code == 1 ? "\x1B[H" : "\x1BOw");
-	    return p - output;
+	if (code == 1 || code == 4) {
+		if (funky_type == FUNKY_TERMKEY) {
+		    code = code == 1 ? 7 : 8;
+		} else if (conf_get_int(conf, CONF_rxvt_homeend)) {
+		    p += sprintf((char *) p, code == 1 ? "\x1B[H" : "\x1BOw");
+		    return p - output;
+		}
 	}
 	if (code) {
-	    p += sprintf((char *) p, "\x1B[%d~", code);
+        if (term->modifiers)
+	        p += termkey(p, "%d;%d~", code, term->modifiers+1);
+        else
+	        p += termkey(p, "%d~", code, 0);
 	    return p - output;
 	}
 
@@ -4611,8 +4624,29 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	 * be is? There's indication on MS' website of an Inquire/InquireEx
 	 * functioning returning a KBINFO structure which tells us. */
 	if (osVersion.dwPlatformId == VER_PLATFORM_WIN32_NT && p_ToUnicodeEx) {
-	    r = p_ToUnicodeEx(wParam, scan, keystate, keys_unicode,
-                              lenof(keys_unicode), 0, kbd_layout);
+	    r = 0;
+	    if (key_down) {
+		if (term->modifiers == M_CTRL) {
+		    WCHAR ktmp;
+		    r = p_ToUnicodeEx(wParam, scan, keystate, keys_unicode,
+			    lenof(keys_unicode), 0, kbd_layout);
+		    ktmp = keys_unicode[0];
+		    /* Reserve ^H, ^I, ^M or ^[ for BS, TAB, ENTER, and ESC keys only */
+		    if (r == 1 && (ktmp == 8 || ktmp == 9 || ktmp == 13 || ktmp == 27))
+			r = 0;
+		}
+		if (r == 0) {
+		    /* Obtain key value using only shift state, (without ALT or CTRL) */
+		    memset(keystate, 0, sizeof(keystate));
+		    if (term->modifiers & M_SHIFT)
+			keystate[VK_SHIFT] |= 0x80;
+		    r = p_ToUnicodeEx(wParam, scan, keystate, keys_unicode,
+			    lenof(keys_unicode), 0, kbd_layout);
+		}
+	    } else {
+		r = p_ToUnicodeEx(wParam, scan, keystate, keys_unicode,
+			lenof(keys_unicode), 0, kbd_layout);
+	    }
 	} else {
 	    /* XXX 'keys' parameter is declared in MSDN documentation as
 	     * 'LPWORD lpChar'.
@@ -4713,7 +4747,11 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 			    luni_send(ldisc, &wch, 1, 1);
 		    }
 		} else {
-		    if(capsOn && wch < 0x80) {
+		    /* Use new encoding unless an xterm sequence exists */
+		    if (    term->modifiers > M_SHIFT &&
+			    !(term->modifiers == M_CTRL && wch < ' ')) {
+			p += termkey(p, "%d;%du", wch, (term->modifiers&~M_SHIFT)+1);
+		    } else if(capsOn && wch < 0x80) {
 			WCHAR cbuf[2];
 			cbuf[0] = 27;
 			cbuf[1] = xlat_uskbd2cyrllic(wch);
