@@ -4153,31 +4153,33 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	if (left_alt && funky_type != FUNKY_TERMKEY)
 	    *p++ = '\033';
 
-	/* Lets see if it's a pattern we know all about ... */
-	if (wParam == VK_PRIOR && shift_state == 1) {
-	    SendMessage(hwnd, WM_VSCROLL, SB_PAGEUP, 0);
-	    return 0;
-	}
-	if (wParam == VK_PRIOR && shift_state == 2) {
-	    SendMessage(hwnd, WM_VSCROLL, SB_LINEUP, 0);
-	    return 0;
-	}
-	if (wParam == VK_NEXT && shift_state == 1) {
-	    SendMessage(hwnd, WM_VSCROLL, SB_PAGEDOWN, 0);
-	    return 0;
-	}
-	if (wParam == VK_NEXT && shift_state == 2) {
-	    SendMessage(hwnd, WM_VSCROLL, SB_LINEDOWN, 0);
-	    return 0;
-	}
-	if ((wParam == VK_PRIOR || wParam == VK_NEXT) && shift_state == 3) {
-	    term_scroll_to_selection(term, (wParam == VK_PRIOR ? 0 : 1));
-	    return 0;
-	}
-	if (wParam == VK_INSERT && shift_state == 1) {
-	    request_paste(NULL);
-	    return 0;
-	}
+    if (funky_type != FUNKY_TERMKEY) {
+        /* Lets see if it's a pattern we know all about ... */
+        if (wParam == VK_PRIOR && shift_state == 1) {
+            SendMessage(hwnd, WM_VSCROLL, SB_PAGEUP, 0);
+            return 0;
+        }
+        if (wParam == VK_PRIOR && shift_state == 2) {
+            SendMessage(hwnd, WM_VSCROLL, SB_LINEUP, 0);
+            return 0;
+        }
+        if (wParam == VK_NEXT && shift_state == 1) {
+            SendMessage(hwnd, WM_VSCROLL, SB_PAGEDOWN, 0);
+            return 0;
+        }
+        if (wParam == VK_NEXT && shift_state == 2) {
+            SendMessage(hwnd, WM_VSCROLL, SB_LINEDOWN, 0);
+            return 0;
+        }
+        if ((wParam == VK_PRIOR || wParam == VK_NEXT) && shift_state == 3) {
+            term_scroll_to_selection(term, (wParam == VK_PRIOR ? 0 : 1));
+            return 0;
+        }
+        if (wParam == VK_INSERT && shift_state == 1) {
+            request_paste(NULL);
+            return 0;
+        }
+    }
 	if (left_alt && wParam == VK_F4 && conf_get_int(conf, CONF_alt_f4)) {
 	    return -1;
 	}
