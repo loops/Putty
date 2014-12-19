@@ -19,6 +19,14 @@ Added features:
    to reset the cursor to its original color "\E]112\007". Most
    standard X11 color names are recognized (Red,Cyan,etc).
 
+   - Will recognize control codes to change cursor shape.  The
+     escape sequence is "\E[<STYLE> q" Where style is a single
+     digit number meaning:
+       0   - whatever style user has set in putty config
+       1/2 - blinking/steady block
+       3/4 - blinking/steady underline
+       5/6 - blinking/steady vertical bar
+
    - Updates the Windows clipboard based on xterm codes sent
    by Tmux.  Clipboard start is "\E]52;;", and stop is "\007".
    The double semicolon matches the Tmux default. The data must

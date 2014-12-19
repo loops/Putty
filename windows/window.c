@@ -146,7 +146,6 @@ struct wm_netevent_params {
 Conf *conf;			       /* exported to windlg.c */
 
 static void conf_cache_data(void);
-int cursor_type;
 int vtmode;
 
 static struct sesslist sesslist;       /* for saved-session menu */
@@ -2060,7 +2059,6 @@ void timer_change_notify(unsigned long next)
 static void conf_cache_data(void)
 {
     /* Cache some items from conf to speed lookups in very hot code */
-    cursor_type = conf_get_int(conf, CONF_cursor_type);
     vtmode = conf_get_int(conf, CONF_vtmode);
 }
 
@@ -3386,7 +3384,7 @@ void do_text_internal(Context ctx, int x, int y, wchar_t *text, int len,
     x += offset_width;
     y += offset_height;
 
-    if ((attr & TATTR_ACTCURS) && (cursor_type == 0 || term->big_cursor)) {
+    if ((attr & TATTR_ACTCURS) && (term->cursor_type == 0 || term->big_cursor)) {
 	attr &= ~(ATTR_REVERSE|ATTR_BLINK|ATTR_COLOURS);
 	/* cursor fg and bg */
 	attr |= (260 << ATTR_FGSHIFT) | (261 << ATTR_BGSHIFT);
@@ -3775,7 +3773,7 @@ void do_cursor(Context ctx, int x, int y, wchar_t *text, int len,
     int fnt_width;
     int char_width;
     HDC hdc = ctx;
-    int ctype = cursor_type;
+    int ctype = term->cursor_type;
 
     lattr &= LATTR_MODE;
 

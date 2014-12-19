@@ -296,6 +296,7 @@ struct terminal_tag {
     int bidi;
     int bksp_is_delete;
     int blink_cur;
+    int cursor_type;
     int blinktext;
     int cjk_ambig_wide;
     int conf_height;

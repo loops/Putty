@@ -1392,6 +1392,7 @@ void term_copy_stuff_from_conf(Terminal *term)
     term->bidi = conf_get_int(term->conf, CONF_bidi);
     term->bksp_is_delete = conf_get_int(term->conf, CONF_bksp_is_delete);
     term->blink_cur = conf_get_int(term->conf, CONF_blink_cur);
+    term->cursor_type = conf_get_int(term->conf, CONF_cursor_type);
     term->blinktext = conf_get_int(term->conf, CONF_blinktext);
     term->cjk_ambig_wide = conf_get_int(term->conf, CONF_cjk_ambig_wide);
     term->conf_height = conf_get_int(term->conf, CONF_height);
@@ -4260,6 +4261,19 @@ static void term_out(Terminal *term)
 			compatibility(SCOANSI);
 			term->use_bce = (term->esc_args[0] <= 0);
 			set_erase_char(term);
+			break;
+		      case ANSI('q', ' '):	/* Set cursor style (DECSCUSR, VT520). */
+			term->blink_cur = conf_get_int(term->conf, CONF_blink_cur);
+			term->cursor_type = conf_get_int(term->conf, CONF_cursor_type);
+			switch (term->esc_args[0]) {
+			case 1:		term->cursor_type = 0; term->blink_cur = 1; break;
+			case 2:		term->cursor_type = 0; term->blink_cur = 0; break;
+			case 3:		term->cursor_type = 1; term->blink_cur = 1; break;
+			case 4:		term->cursor_type = 1; term->blink_cur = 0; break;
+			case 5:		term->cursor_type = 2; term->blink_cur = 1; break;
+			case 6:		term->cursor_type = 2; term->blink_cur = 0; break;
+			};
+			term_schedule_cblink(term);
 			break;
 		      case ANSI('p', '"'): /* DECSCL: set compat level */
 			/*
